@@ -17,9 +17,8 @@ interface AuthContextType {
 
 // Pre-authorized admin emails (add specific addresses here or in NEXT_PUBLIC_ADMIN_EMAIL)
 export const HARDCODED_ADMINS: string[] = [
-  // Add your 2 admin Gmail accounts here if desired:
-  // 'teacher1@gmail.com',
-  // 'teacher2@gmail.com',
+  'sujatasamala3@gmail.com',
+  'samalaraj2@gmail.com',
 ];
 
 export function getAdminEmails(): string[] {

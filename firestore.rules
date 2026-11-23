@@ -3,10 +3,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // Quizzes collection:
-    // Anyone can read quizzes to take them; authenticated users can create, update, and delete
+    // Anyone can read quizzes to take them; only authorized admin accounts can create, update, and delete
     match /quizzes/{quizId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow create, update, delete: if request.auth != null && (
+        request.auth.token.email in ['sujatasamala3@gmail.com', 'samalaraj2@gmail.com']
+      );
     }
 
     // Attempts collection (200+ concurrent students):
