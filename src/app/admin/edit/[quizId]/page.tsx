@@ -104,9 +104,10 @@ export default function QuizEditorPage({ params }: PageProps) {
       setSaveSuccess(true);
       showToast('✓ All changes saved');
       setTimeout(() => setSaveSuccess(false), 2500);
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to save quiz');
+    } catch (err: any) {
+      console.error('Save quiz error:', err);
+      const msg = err.code ? `[${err.code}] ${err.message}` : (err.message || 'Error saving quiz');
+      showToast(`Failed to save: ${msg}`);
     } finally {
       setSaving(false);
     }

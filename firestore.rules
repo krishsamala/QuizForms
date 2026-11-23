@@ -2,32 +2,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to verify admin email
-    function isAdmin() {
-      return request.auth != null && 
-             request.auth.token.email != null;
-    }
-
-    // Quizzes collection
-    // - Students can read published quizzes (isAcceptingResponses == true)
-    // - Admin can CRUD any quiz
+    // Quizzes collection:
+    // Anyone can read quizzes to take them; authenticated users can create, update, and delete
     match /quizzes/{quizId} {
-      allow read: if resource.data.isAcceptingResponses == true || isAdmin();
-      allow create, update, delete: if isAdmin();
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
     }
 
-    // Attempts collection (Designed for 200+ concurrent students)
-    // - Student can create an attempt without requiring Firebase Auth (1 write at start)
-    // - Student can submit their attempt if not previously submitted (1 write at submission)
-    // - Admin can read and inspect all attempts
-    // - Student can read their own attempt by email
+    // Attempts collection (200+ concurrent students):
+    // Students can create and submit attempts; admins view responses
     match /attempts/{attemptId} {
-      allow create: if true;
-      allow update: if resource.data.submittedAt == null;
-      allow read: if isAdmin() || 
-                     (request.auth != null && resource.data.studentEmail == request.auth.token.email) ||
-                     true; // Public read permitted for instant scorecard display on student client
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
   }
 }

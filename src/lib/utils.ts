@@ -13,6 +13,21 @@ async function storageModule() {
   return await import('firebase/storage');
 }
 
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === undefined) return null as any;
+  if (data === null || typeof data !== 'object') return data;
+  if (Array.isArray(data)) {
+    return data.map(sanitizeForFirestore) as any;
+  }
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data as Record<string, any>)) {
+    if (value !== undefined) {
+      clean[key] = sanitizeForFirestore(value);
+    }
+  }
+  return clean as T;
+}
+
 // ── Quiz CRUD ──
 
 export async function getQuizzes(): Promise<Quiz[]> {
@@ -71,9 +86,13 @@ export async function createQuiz(data: Omit<Quiz, 'id' | 'createdAt' | 'updatedA
     return created;
   }
   const { collection, addDoc, serverTimestamp } = await firestoreModule();
-  const ref = await addDoc(collection(db!, 'quizzes'), {
-    ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), responseCount: 0,
+  const cleanData = sanitizeForFirestore({
+    ...data,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    responseCount: 0,
   });
+  const ref = await addDoc(collection(db!, 'quizzes'), cleanData);
   return { ...data, id: ref.id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), responseCount: 0 };
 }
 
@@ -91,8 +110,12 @@ export async function updateQuiz(id: string, data: Partial<Quiz>): Promise<void>
     }
     return;
   }
-  const { doc, updateDoc, serverTimestamp } = await firestoreModule();
-  await updateDoc(doc(db!, 'quizzes', id), { ...data, updatedAt: serverTimestamp() });
+  const { doc, setDoc, serverTimestamp } = await firestoreModule();
+  const cleanData = sanitizeForFirestore({
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+  await setDoc(doc(db!, 'quizzes', id), cleanData, { merge: true });
 }
 
 export async function deleteQuiz(id: string): Promise<void> {
@@ -123,9 +146,12 @@ export async function createAttempt(quizId: string, studentName: string, student
 
   const { collection, addDoc, serverTimestamp, Timestamp } = await firestoreModule();
   const expiresAtTs = Timestamp.fromDate(expiresAt);
-  const ref = await addDoc(collection(db!, 'attempts'), {
-    ...attempt, startedAt: serverTimestamp(), expiresAt: expiresAtTs,
+  const cleanData = sanitizeForFirestore({
+    ...attempt,
+    startedAt: serverTimestamp(),
+    expiresAt: expiresAtTs,
   });
+  const ref = await addDoc(collection(db!, 'attempts'), cleanData);
   return { ...attempt, id: ref.id };
 }
 
@@ -192,7 +218,7 @@ export async function submitAttempt(
     return mockDb.submitAttempt(attemptId, updateData) as QuizAttempt;
   }
 
-  const { doc, getDoc, updateDoc, serverTimestamp } = await firestoreModule();
+  const { doc, getDoc, setDoc, serverTimestamp, increment } = await firestoreModule();
   const attemptRef = doc(db!, 'attempts', attemptId);
   const attemptSnap = await getDoc(attemptRef);
   if (attemptSnap.exists()) {
@@ -200,12 +226,16 @@ export async function submitAttempt(
     const startedAt = data.startedAt?.toDate ? data.startedAt.toDate() : new Date(data.startedAt);
     updateData.timeTakenSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
   }
-  await updateDoc(attemptRef, { ...updateData, submittedAt: serverTimestamp() });
+  const cleanAttempt = sanitizeForFirestore({ ...updateData, submittedAt: serverTimestamp() });
+  await setDoc(attemptRef, cleanAttempt, { merge: true });
 
   // Update response count
-  const quizRef = doc(db!, 'quizzes', quiz.id);
-  const { increment } = await firestoreModule();
-  await import('firebase/firestore').then(m => m.updateDoc(quizRef, { responseCount: increment(1) }));
+  try {
+    const quizRef = doc(db!, 'quizzes', quiz.id);
+    await setDoc(quizRef, { responseCount: increment(1) }, { merge: true });
+  } catch (e) {
+    console.warn('Could not increment quiz responseCount:', e);
+  }
 
   return { id: attemptId, quizId: quiz.id, studentName: '', studentEmail: '', startedAt: '', expiresAt: '', ...updateData } as QuizAttempt;
 }

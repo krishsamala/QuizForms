@@ -59,9 +59,10 @@ export default function AdminDashboardPage() {
         ],
       });
       router.push(`/admin/edit/${newQuiz.id}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create quiz:', err);
-      showToast('Error creating new quiz');
+      const msg = err.code ? `[${err.code}] ${err.message}` : (err.message || 'Error creating new quiz');
+      showToast(`Error creating quiz: ${msg}`);
     } finally {
       setIsCreating(false);
     }
