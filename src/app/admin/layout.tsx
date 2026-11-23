@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, isAdmin, isMock, signIn, signOut } = useAuth();
+  const { user, loading, isAdmin, isMock, authError, signIn, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="min-h-screen bg-[#f0ebf8] flex items-center justify-center p-4">
         <div className="gf-card max-w-md w-full overflow-hidden">
           <div className="gf-header-accent" />
-          <div className="p-8 text-center space-y-6">
+          <div className="p-8 text-center space-y-5">
             <div className="mx-auto w-16 h-16 rounded-full bg-[#ede7f6] flex items-center justify-center text-[#673ab7]">
               <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
@@ -36,9 +36,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </p>
             </div>
 
+            {authError && (
+              <div className="p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs text-left leading-relaxed">
+                <p className="font-bold flex items-center gap-1.5 mb-1 text-red-900">
+                  <svg className="w-4 h-4 shrink-0 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Authentication Error:
+                </p>
+                {authError}
+              </div>
+            )}
+
+            {user && (
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                Signed in as <strong>{user.email}</strong>, but this email is not in the allowed admin list.
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  className="block mt-2 text-xs text-[#673ab7] underline font-semibold mx-auto cursor-pointer"
+                >
+                  Sign out & switch account
+                </button>
+              </div>
+            )}
+
             <button
               onClick={() => signIn()}
-              className="w-full flex items-center justify-center gap-3 px-6 py-2.5 bg-white border border-gray-300 rounded-md font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
+              className="w-full flex items-center justify-center gap-3 px-6 py-2.5 bg-white border border-gray-300 rounded-md font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-all cursor-pointer"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z" />
