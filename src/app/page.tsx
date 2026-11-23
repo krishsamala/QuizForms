@@ -23,12 +23,10 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
-            <Link href="/admin" className="gf-btn-primary">
-              Teacher Dashboard
-            </Link>
-            <Link href="/quiz/demo-quiz-1" className="gf-btn-outline">
-              Try Sample Quiz
+          <div className="pt-2">
+            <Link href="/admin" className="gf-btn-primary w-full py-3 text-sm flex items-center justify-center gap-2">
+              Teacher Sign-in
+              <span>&rarr;</span>
             </Link>
           </div>
 
