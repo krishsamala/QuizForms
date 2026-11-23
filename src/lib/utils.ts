@@ -293,37 +293,173 @@ export function computeStats(attempts: QuizAttempt[]): ResponseStats {
   };
 }
 
-// ── Storage ──
+// ── Storage & Diagram Helpers ──
+
+/**
+ * Compresses an image file/blob to an optimized data URL (max dimension 1000px, JPEG/WebP quality 0.82).
+ * Fills white background to ensure transparent diagrams don't turn black.
+ */
+export function compressImageToDataUrl(
+  fileOrBlob: File | Blob,
+  maxWidth = 1000,
+  maxHeight = 800,
+  quality = 0.82
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(fileOrBlob);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read image file'));
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (!dataUrl) {
+        reject(new Error('Empty file'));
+        return;
+      }
+
+      const img = new Image();
+      img.onerror = () => resolve(dataUrl);
+      img.onload = () => {
+        try {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.max(1, Math.round(width * ratio));
+            height = Math.max(1, Math.round(height * ratio));
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+
+          try {
+            const webpUrl = canvas.toDataURL('image/webp', quality);
+            if (webpUrl.startsWith('data:image/webp')) {
+              resolve(webpUrl);
+              return;
+            }
+          } catch {}
+
+          const jpegUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(jpegUrl);
+        } catch (scaleErr) {
+          console.warn('Canvas scaling warning, using raw data URL:', scaleErr);
+          resolve(dataUrl);
+        }
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(fileOrBlob);
+  });
+}
 
 export async function uploadDiagramImage(file: File, quizId: string, questionId: string): Promise<string> {
-  if (isMockMode) {
-    // Return a fake data URL for mock mode
+  let compressedDataUrl = '';
+  try {
+    compressedDataUrl = await compressImageToDataUrl(file);
+  } catch (err) {
+    console.warn('Image compression warning:', err);
+  }
+
+  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (isMockMode || !storage || !bucket || bucket.trim() === '') {
+    if (compressedDataUrl) return compressedDataUrl;
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
       reader.readAsDataURL(file);
     });
   }
-  const { ref, uploadBytes, getDownloadURL } = await storageModule();
-  const path = `diagrams/${quizId}/${questionId}_${Date.now()}.png`;
-  const storageRef = ref(storage!, path);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+
+  try {
+    const { ref, uploadBytes, getDownloadURL } = await storageModule();
+    const path = `diagrams/${quizId}/${questionId}_${Date.now()}.png`;
+    const storageRef = ref(storage, path);
+
+    const uploadPromise = (async () => {
+      await uploadBytes(storageRef, file);
+      return await getDownloadURL(storageRef);
+    })();
+
+    const timeoutPromise = new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error('Firebase Storage timeout')), 6000)
+    );
+
+    return await Promise.race([uploadPromise, timeoutPromise]);
+  } catch (storageErr) {
+    console.warn('Firebase Storage upload failed or blocked by CORS/permissions. Falling back to embedded diagram:', storageErr);
+    if (compressedDataUrl) return compressedDataUrl;
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
 }
 
 export async function uploadDiagramBlob(blob: Blob, quizId: string, questionId: string): Promise<string> {
-  if (isMockMode) {
+  let compressedDataUrl = '';
+  try {
+    compressedDataUrl = await compressImageToDataUrl(blob);
+  } catch (err) {
+    console.warn('Blob compression warning:', err);
+  }
+
+  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (isMockMode || !storage || !bucket || bucket.trim() === '') {
+    if (compressedDataUrl) return compressedDataUrl;
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
       reader.readAsDataURL(blob);
     });
   }
-  const { ref, uploadBytes, getDownloadURL } = await storageModule();
-  const path = `diagrams/${quizId}/${questionId}_${Date.now()}.png`;
-  const storageRef = ref(storage!, path);
-  await uploadBytes(storageRef, blob);
-  return getDownloadURL(storageRef);
+
+  try {
+    const { ref, uploadBytes, getDownloadURL } = await storageModule();
+    const path = `diagrams/${quizId}/${questionId}_${Date.now()}.png`;
+    const storageRef = ref(storage, path);
+
+    const uploadPromise = (async () => {
+      await uploadBytes(storageRef, blob);
+      return await getDownloadURL(storageRef);
+    })();
+
+    const timeoutPromise = new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error('Firebase Storage timeout')), 6000)
+    );
+
+    return await Promise.race([uploadPromise, timeoutPromise]);
+  } catch (storageErr) {
+    console.warn('Firebase Storage blob upload failed. Falling back to embedded diagram:', storageErr);
+    if (compressedDataUrl) return compressedDataUrl;
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
 }
 
 // ── CSV Export ──

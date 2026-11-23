@@ -23,7 +23,12 @@ if (!isMockMode) {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   auth = getAuth(app);
   db = getFirestore(app);
-  storage = getStorage(app);
+  try {
+    storage = firebaseConfig.storageBucket ? getStorage(app) : null;
+  } catch (e) {
+    console.warn('Firebase storage initialization warning:', e);
+    storage = null;
+  }
 }
 
 export { app, auth, db, storage };

@@ -234,16 +234,32 @@ export default function QuizEditorPage({ params }: PageProps) {
   };
 
   // Diagram Image File Upload for Question Card
+  const [uploadingDiagramQId, setUploadingDiagramQId] = useState<string | null>(null);
+  const [urlInputQId, setUrlInputQId] = useState<string | null>(null);
+  const [urlInputValue, setUrlInputValue] = useState<string>('');
+
   const handleImageUpload = async (qId: string, file: File) => {
     try {
-      showToast('Uploading diagram...');
+      setUploadingDiagramQId(qId);
+      showToast('Attaching diagram...');
       const url = await uploadDiagramImage(file, quizId, qId);
-      updateQuestion(qId, { diagramUrl: url });
+      updateQuestion(qId, { diagramUrl: url, hasDiagram: true });
       showToast('✓ Diagram attached successfully');
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to upload image');
+    } catch (err: any) {
+      console.error('Image upload error:', err);
+      showToast(`Failed to upload image: ${err?.message || 'Check image file'}`);
+    } finally {
+      setUploadingDiagramQId(null);
     }
+  };
+
+  const handleAttachImageUrl = (qId: string) => {
+    const trimmed = urlInputValue.trim();
+    if (!trimmed) return;
+    updateQuestion(qId, { diagramUrl: trimmed, hasDiagram: true });
+    setUrlInputQId(null);
+    setUrlInputValue('');
+    showToast('✓ Diagram link attached');
   };
 
   // PDF Import Execution
@@ -1006,29 +1022,83 @@ export default function QuizEditorPage({ params }: PageProps) {
 
                 {/* Diagram Section */}
                 {q.diagramUrl ? (
-                  <div className="p-3 bg-gray-50 border border-[#dadce0] rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-600 flex items-center gap-1">
+                  <div className="p-3 bg-gray-50 border border-[#dadce0] rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                         <svg className="w-4 h-4 text-[#673ab7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         Question Diagram
                       </span>
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs text-[#673ab7] hover:underline font-medium cursor-pointer">
+                          Replace
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleImageUpload(q.id, file);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => updateQuestion(q.id, { diagramUrl: undefined, hasDiagram: false })}
+                          className="text-xs text-red-600 hover:text-red-700 font-medium cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-64 flex justify-center bg-white p-2 rounded border border-gray-100 overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={q.diagramUrl} alt="Question Diagram" className="max-h-60 object-contain rounded" />
+                    </div>
+                  </div>
+                ) : uploadingDiagramQId === q.id ? (
+                  <div className="p-3 bg-[#ede7f6]/50 border border-purple-200 rounded-lg flex items-center gap-2.5 text-xs text-[#673ab7] font-medium">
+                    <div className="w-4 h-4 border-2 border-[#673ab7] border-t-transparent rounded-full animate-spin" />
+                    <span>Processing and attaching diagram image...</span>
+                  </div>
+                ) : urlInputQId === q.id ? (
+                  <div className="p-3 bg-gray-50 border border-purple-200 rounded-lg space-y-2">
+                    <div className="text-xs font-semibold text-gray-700">Paste Image Link (URL):</div>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://example.com/diagram.png"
+                        value={urlInputValue}
+                        onChange={(e) => setUrlInputValue(e.target.value)}
+                        className="flex-1 text-xs px-2.5 py-1.5 border border-[#dadce0] rounded bg-white focus:outline-none focus:border-[#673ab7]"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAttachImageUrl(q.id);
+                        }}
+                      />
                       <button
                         type="button"
-                        onClick={() => updateQuestion(q.id, { diagramUrl: undefined })}
-                        className="text-xs text-red-600 hover:text-red-700 font-medium cursor-pointer"
+                        onClick={() => handleAttachImageUrl(q.id)}
+                        className="gf-btn-primary text-xs py-1.5 px-3 cursor-pointer"
                       >
-                        Remove
+                        Attach
                       </button>
-                    </div>
-                    <div className="max-h-60 flex justify-center bg-white p-2 rounded border border-gray-100 overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={q.diagramUrl} alt="Diagram" className="max-h-56 object-contain rounded" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUrlInputQId(null);
+                          setUrlInputValue('');
+                        }}
+                        className="gf-btn-outline text-xs py-1.5 px-3 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  <div>
+                  <div className="flex items-center gap-3 flex-wrap">
                     <label className="cursor-pointer text-xs font-medium text-[#673ab7] hover:text-[#5e35a1] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-[#ede7f6] transition-colors">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -1041,9 +1111,21 @@ export default function QuizEditorPage({ params }: PageProps) {
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) handleImageUpload(q.id, file);
+                          e.target.value = '';
                         }}
                       />
                     </label>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUrlInputQId(q.id);
+                        setUrlInputValue('');
+                      }}
+                      className="text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+                    >
+                      or paste image URL
+                    </button>
                   </div>
                 )}
 
@@ -1155,6 +1237,25 @@ export default function QuizEditorPage({ params }: PageProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                   </button>
+
+                  <label
+                    className="gf-toolbar-btn text-purple-700 cursor-pointer"
+                    title="Add diagram image to this question"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(q.id, file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
 
                   <button
                     type="button"
