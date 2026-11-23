@@ -67,6 +67,7 @@ export const sampleQuiz: Quiz = {
   isAcceptingResponses: true,
   showResultsImmediately: true,
   allowSingleAttempt: false,
+  divisions: ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F'],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   responseCount: 3,

@@ -146,12 +146,24 @@ export async function deleteQuiz(id: string): Promise<void> {
 
 // ── Attempt CRUD ──
 
-export async function createAttempt(quizId: string, studentName: string, studentEmail: string, durationMinutes: number): Promise<QuizAttempt> {
+export async function createAttempt(
+  quizId: string,
+  studentName: string,
+  studentEmail: string,
+  durationMinutes: number,
+  studentDivision?: string
+): Promise<QuizAttempt> {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + durationMinutes * 60 * 1000);
+  const cleanEmail = studentEmail?.trim() || `${studentName.trim().toLowerCase().replace(/\s+/g, '_')}@exam.local`;
   const attempt: Omit<QuizAttempt, 'id'> = {
-    quizId, studentName, studentEmail, answers: {},
-    startedAt: now.toISOString(), expiresAt: expiresAt.toISOString(),
+    quizId,
+    studentName: studentName.trim(),
+    studentEmail: cleanEmail,
+    studentDivision: studentDivision || '',
+    answers: {},
+    startedAt: now.toISOString(),
+    expiresAt: expiresAt.toISOString(),
   };
 
   if (isMockMode) return mockDb.createAttempt(attempt);
@@ -317,9 +329,10 @@ export async function uploadDiagramBlob(blob: Blob, quizId: string, questionId: 
 // ── CSV Export ──
 
 export function exportToCsv(attempts: QuizAttempt[], quiz: Quiz): string {
-  const headers = ['Name', 'Roll No./Email', 'Score', 'Total Marks', 'Percentage', 'Time Taken (min)', 'Auto-Submitted', 'Submitted At'];
+  const headers = ['Name', 'Division', 'Roll No./Email', 'Score', 'Total Marks', 'Percentage', 'Time Taken (min)', 'Auto-Submitted', 'Submitted At'];
   const rows = attempts.map(a => [
     a.studentName,
+    a.studentDivision || 'N/A',
     a.studentEmail,
     a.score?.toString() || '0',
     a.totalMarks?.toString() || '0',

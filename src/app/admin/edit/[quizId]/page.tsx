@@ -101,6 +101,7 @@ export default function QuizEditorPage({ params }: PageProps) {
         isAcceptingResponses: quiz.isAcceptingResponses,
         showResultsImmediately: quiz.showResultsImmediately,
         allowSingleAttempt: quiz.allowSingleAttempt,
+        divisions: quiz.divisions || ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F'],
       });
       setSaveSuccess(true);
       showToast('✓ All changes saved');
@@ -120,6 +121,39 @@ export default function QuizEditorPage({ params }: PageProps) {
     const studentUrl = `${origin}/quiz/${quiz.id}`;
     navigator.clipboard.writeText(studentUrl);
     showToast('✓ Student quiz link copied to clipboard!');
+  };
+
+  // Division Configuration Helpers
+  const [newDivisionInput, setNewDivisionInput] = useState('');
+
+  const handleAddDivision = () => {
+    if (!quiz || !newDivisionInput.trim()) return;
+    const current = quiz.divisions || ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F'];
+    const val = newDivisionInput.trim();
+    if (!current.includes(val)) {
+      setQuiz({ ...quiz, divisions: [...current, val] });
+    }
+    setNewDivisionInput('');
+  };
+
+  const removeDivision = (indexToRemove: number) => {
+    if (!quiz) return;
+    const current = quiz.divisions || ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F'];
+    const updated = current.filter((_, idx) => idx !== indexToRemove);
+    setQuiz({ ...quiz, divisions: updated });
+  };
+
+  const applyDivisionPreset = (preset: string) => {
+    if (!quiz) return;
+    let list: string[] = [];
+    if (preset === '6th (A-F)') list = ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F'];
+    else if (preset === '7th (A-F)') list = ['7th A', '7th B', '7th C', '7th D', '7th E', '7th F'];
+    else if (preset === '8th (A-F)') list = ['8th A', '8th B', '8th C', '8th D', '8th E', '8th F'];
+    else if (preset === '9th (A-F)') list = ['9th A', '9th B', '9th C', '9th D', '9th E', '9th F'];
+    else if (preset === '10th (A-F)') list = ['10th A', '10th B', '10th C', '10th D', '10th E', '10th F'];
+    else if (preset === 'A to D') list = ['Section A', 'Section B', 'Section C', 'Section D'];
+    setQuiz({ ...quiz, divisions: list });
+    showToast(`✓ Applied ${preset} divisions`);
   };
 
   // Question Management
@@ -805,6 +839,83 @@ export default function QuizEditorPage({ params }: PageProps) {
                     }`}
                   />
                 </button>
+              </div>
+            </div>
+
+            {/* Student Registration & Standards / Divisions Settings */}
+            <div className="pt-4 border-t border-gray-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <svg className="w-4 h-4 text-[#673ab7]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Student Standard & Divisions (Required on Entry)
+                  </h3>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Students will choose their division from these options when taking the quiz. Customize per exam below:
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="text-gray-500 font-medium mr-1">Quick Presets:</span>
+                {['6th (A-F)', '7th (A-F)', '8th (A-F)', '9th (A-F)', '10th (A-F)', 'A to D'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => applyDivisionPreset(preset)}
+                    className="px-2 py-0.5 rounded bg-purple-50 hover:bg-purple-100 text-[#673ab7] border border-purple-200 transition-colors font-medium cursor-pointer"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              {/* Active Division Chips */}
+              <div className="flex flex-wrap gap-2 items-center min-h-[36px] p-2.5 bg-gray-50 rounded-lg border border-gray-200">
+                {(quiz.divisions || ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F']).map((div, dIdx) => (
+                  <span
+                    key={dIdx}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-white text-gray-800 border border-gray-300 shadow-xs"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#673ab7]" />
+                    {div}
+                    <button
+                      type="button"
+                      onClick={() => removeDivision(dIdx)}
+                      className="text-gray-400 hover:text-red-600 font-bold ml-1 cursor-pointer"
+                      title="Remove division"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+
+                {/* Add Custom Division Input */}
+                <div className="inline-flex items-center gap-1 text-xs">
+                  <input
+                    type="text"
+                    placeholder="+ Add (e.g. 6th G)"
+                    value={newDivisionInput}
+                    onChange={(e) => setNewDivisionInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddDivision();
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-white border border-dashed border-gray-300 rounded text-xs focus:border-[#673ab7] focus:outline-none w-28"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddDivision}
+                    className="px-2.5 py-1 rounded bg-[#673ab7] text-white text-[11px] font-medium hover:bg-[#5e35b1] cursor-pointer"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
             </div>
           </div>

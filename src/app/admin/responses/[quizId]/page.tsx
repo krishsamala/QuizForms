@@ -19,6 +19,7 @@ export default function QuizResponsesPage({ params }: PageProps) {
 
   // Search & Sorting
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'score' | 'time' | 'date' | 'name'>('score');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -43,14 +44,24 @@ export default function QuizResponsesPage({ params }: PageProps) {
 
   const stats = computeStats(attempts);
 
+  const allDivisions = Array.from(
+    new Set([
+      ...(quiz?.divisions || ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F']),
+      ...attempts.map((a) => a.studentDivision).filter(Boolean) as string[],
+    ])
+  );
+
   // Filter & Sort Attempts
   const filteredAttempts = attempts
     .filter((a) => {
       const q = searchQuery.toLowerCase();
-      return (
+      const matchesSearch =
         a.studentName.toLowerCase().includes(q) ||
-        a.studentEmail.toLowerCase().includes(q)
-      );
+        a.studentEmail.toLowerCase().includes(q) ||
+        (a.studentDivision || '').toLowerCase().includes(q);
+      const matchesDivision =
+        selectedDivision === 'all' || (a.studentDivision || '') === selectedDivision;
+      return matchesSearch && matchesDivision;
     })
     .sort((a, b) => {
       let comparison = 0;
@@ -211,8 +222,22 @@ export default function QuizResponsesPage({ params }: PageProps) {
             </svg>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-gray-500 self-end sm:self-auto">
-            <span>Sort by:</span>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 self-end sm:self-auto">
+            <span>Division:</span>
+            <select
+              value={selectedDivision}
+              onChange={(e) => setSelectedDivision(e.target.value)}
+              className="border border-[#dadce0] rounded px-2.5 py-1 text-xs font-medium text-gray-700 bg-white"
+            >
+              <option value="all">All Divisions ({attempts.length})</option>
+              {allDivisions.map((d) => (
+                <option key={d} value={d}>
+                  {d} ({attempts.filter((a) => (a.studentDivision || '') === d).length})
+                </option>
+              ))}
+            </select>
+
+            <span className="ml-1">Sort by:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
@@ -252,6 +277,7 @@ export default function QuizResponsesPage({ params }: PageProps) {
                     <th className="py-3 px-4 cursor-pointer hover:text-gray-900" onClick={() => toggleSort('name')}>
                       Candidate Name
                     </th>
+                    <th className="py-3 px-4">Standard / Division</th>
                     <th className="py-3 px-4">Roll No. / Email</th>
                     <th className="py-3 px-4 cursor-pointer hover:text-gray-900" onClick={() => toggleSort('score')}>
                       Score
@@ -286,6 +312,11 @@ export default function QuizResponsesPage({ params }: PageProps) {
                       >
                         <td className="py-3.5 px-4 text-gray-400">{idx + 1}</td>
                         <td className="py-3.5 px-4 font-semibold text-gray-900">{att.studentName}</td>
+                        <td className="py-3.5 px-4">
+                          <span className="px-2 py-0.5 rounded bg-purple-50 text-[#673ab7] font-semibold text-[11px] border border-purple-100">
+                            {att.studentDivision || 'N/A'}
+                          </span>
+                        </td>
                         <td className="py-3.5 px-4 text-gray-600">{att.studentEmail}</td>
                         <td className="py-3.5 px-4 font-medium text-gray-800">
                           {att.score || 0} / {att.totalMarks || quiz.questions.length}
@@ -340,7 +371,7 @@ export default function QuizResponsesPage({ params }: PageProps) {
                   Student Graded Response Sheet
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Candidate: <strong className="text-gray-800">{selectedAttempt.studentName}</strong> ({selectedAttempt.studentEmail})
+                  Candidate: <strong className="text-gray-800">{selectedAttempt.studentName}</strong> | Division: <strong className="text-[#673ab7]">{selectedAttempt.studentDivision || 'N/A'}</strong> ({selectedAttempt.studentEmail})
                 </p>
               </div>
 

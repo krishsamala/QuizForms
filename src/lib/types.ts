@@ -24,6 +24,7 @@ export interface Quiz {
   createdAt: string;
   updatedAt: string;
   responseCount?: number;
+  divisions?: string[]; // e.g. ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F']
 }
 
 export interface QuizAttempt {
@@ -31,6 +32,7 @@ export interface QuizAttempt {
   quizId: string;
   studentName: string;
   studentEmail: string;
+  studentDivision?: string; // e.g. '6th A'
   answers: Record<string, number>; // questionId -> selected option (1-4)
   score?: number;
   totalMarks?: number;

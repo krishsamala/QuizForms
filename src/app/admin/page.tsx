@@ -47,6 +47,7 @@ export default function AdminDashboardPage() {
         isAcceptingResponses: true,
         showResultsImmediately: true,
         allowSingleAttempt: true,
+        divisions: ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F'],
         questions: [
           {
             id: 'q1',

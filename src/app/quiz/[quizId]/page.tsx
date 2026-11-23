@@ -20,6 +20,7 @@ export default function StudentQuizPage({ params }: PageProps) {
 
   // Student Input State
   const [studentName, setStudentName] = useState('');
+  const [studentDivision, setStudentDivision] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
   const [startLoading, setStartLoading] = useState(false);
 
@@ -92,17 +93,27 @@ export default function StudentQuizPage({ params }: PageProps) {
   }, [quizId]);
 
   // Step 2: Start Quiz Handler (Concurrency optimization: 1 write to start)
+  const divisionsList = quiz?.divisions && quiz.divisions.length > 0
+    ? quiz.divisions
+    : ['6th A', '6th B', '6th C', '6th D', '6th E', '6th F'];
+
   const handleStartQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quiz || !studentName.trim() || !studentEmail.trim()) return;
+    if (!quiz || !studentName.trim()) return;
+    if (divisionsList.length > 0 && !studentDivision) {
+      setErrorMsg('Please select your Standard/ Division.');
+      return;
+    }
 
     try {
       setStartLoading(true);
       setErrorMsg(null);
 
+      const studentKey = studentEmail.trim() || `${studentName.trim().toLowerCase().replace(/\s+/g, '_')}_${studentDivision.replace(/\s+/g, '_')}@exam.local`;
+
       // Check for single attempt rule
       if (quiz.allowSingleAttempt) {
-        const existing = await findSubmittedAttempt(quiz.id, studentEmail.trim().toLowerCase());
+        const existing = await findSubmittedAttempt(quiz.id, studentKey.toLowerCase());
         if (existing) {
           setSubmittedAttempt(existing);
           return;
@@ -110,14 +121,15 @@ export default function StudentQuizPage({ params }: PageProps) {
       }
 
       // Check if student already has an active, unsubmitted attempt to resume
-      let attempt = await findActiveAttempt(quiz.id, studentEmail.trim().toLowerCase());
+      let attempt = await findActiveAttempt(quiz.id, studentKey.toLowerCase());
 
       if (!attempt) {
         attempt = await createAttempt(
           quiz.id,
           studentName.trim(),
-          studentEmail.trim().toLowerCase(),
-          quiz.durationMinutes
+          studentKey.toLowerCase(),
+          quiz.durationMinutes,
+          studentDivision
         );
       }
 
@@ -351,6 +363,14 @@ export default function StudentQuizPage({ params }: PageProps) {
               <div>
                 <h1 className="text-2xl font-normal text-gray-900">{quiz.title}</h1>
                 <p className="text-sm text-gray-600 mt-1">
+                  Candidate: <strong className="text-gray-900">{submittedAttempt.studentName}</strong>
+                  {submittedAttempt.studentDivision && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-purple-100 text-[#673ab7] font-semibold text-xs">
+                      {submittedAttempt.studentDivision}
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
                   Your response has been recorded.
                 </p>
               </div>
@@ -528,83 +548,154 @@ export default function StudentQuizPage({ params }: PageProps) {
     );
   }
 
-  // ── PHASE 1: PRE-TEST START SCREEN ──
+  // ── PHASE 1: PRE-TEST START SCREEN (Google Forms Style) ──
   if (!activeAttempt) {
     return (
-      <div className="min-h-screen bg-[#f0ebf8] py-12 px-4 flex items-center justify-center">
-        <div className="gf-card max-w-lg w-full overflow-hidden">
-          <div className="gf-header-accent" />
-          <div className="p-8 space-y-6">
-            <div className="space-y-2">
-              <h1 className="text-2xl font-normal text-gray-900 tracking-tight">{quiz.title}</h1>
-              <p className="text-sm text-gray-600 leading-relaxed">{quiz.description}</p>
-            </div>
-
-            {/* Test Details */}
-            <div className="p-4 rounded-lg bg-[#ede7f6]/60 border border-purple-100 grid grid-cols-3 gap-2 text-center text-xs">
-              <div>
-                <p className="font-medium text-gray-500 uppercase">Questions</p>
-                <p className="text-lg font-bold text-gray-900 mt-0.5">{quiz.questions.length}</p>
-              </div>
-              <div>
-                <p className="font-medium text-gray-500 uppercase">Total Marks</p>
-                <p className="text-lg font-bold text-gray-900 mt-0.5">
-                  {quiz.questions.reduce((a, b) => a + b.points, 0)}
+      <div className="min-h-screen bg-[#f0ebf8] py-8 sm:py-12 px-4 flex justify-center">
+        <form onSubmit={handleStartQuiz} className="max-w-2xl w-full space-y-4">
+          {/* Header Card */}
+          <div className="gf-card overflow-hidden">
+            <div className="gf-header-accent" />
+            <div className="p-6 sm:p-8 space-y-4">
+              <h1 className="text-2xl sm:text-3xl font-normal text-gray-900 tracking-tight">
+                {quiz.title}
+              </h1>
+              {quiz.description && (
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                  {quiz.description}
                 </p>
+              )}
+
+              {/* Test Summary Badges */}
+              <div className="p-3.5 rounded-lg bg-[#ede7f6]/60 border border-purple-100 grid grid-cols-3 gap-2 text-center text-xs">
+                <div>
+                  <p className="font-medium text-gray-500 uppercase text-[10px]">Questions</p>
+                  <p className="text-base font-bold text-gray-900 mt-0.5">{quiz.questions.length}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-500 uppercase text-[10px]">Total Marks</p>
+                  <p className="text-base font-bold text-gray-900 mt-0.5">
+                    {quiz.questions.reduce((a, b) => a + b.points, 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-500 uppercase text-[10px]">Time Limit</p>
+                  <p className="text-base font-bold text-[#673ab7] mt-0.5">{quiz.durationMinutes} min</p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium text-gray-500 uppercase">Time Limit</p>
-                <p className="text-lg font-bold text-[#673ab7] mt-0.5">{quiz.durationMinutes} min</p>
+
+              <div className="text-xs text-red-500 font-medium pt-1">
+                * Indicates required question
               </div>
             </div>
-
-            {/* Student Identification Form */}
-            <form onSubmit={handleStartQuiz} className="space-y-5">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
-                  placeholder="Your answer"
-                  className="w-full text-sm text-gray-900 gf-input-underline pb-2 placeholder-gray-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                  Roll Number / Student Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={studentEmail}
-                  onChange={(e) => setStudentEmail(e.target.value)}
-                  placeholder="Your answer"
-                  className="w-full text-sm text-gray-900 gf-input-underline pb-2 placeholder-gray-400"
-                />
-                {quiz.allowSingleAttempt && (
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    * Single attempt exam: Only 1 submission allowed for this Roll No. / Email.
-                  </p>
-                )}
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={startLoading || !studentName.trim() || !studentEmail.trim()}
-                  className="gf-btn-primary w-full text-sm py-3"
-                >
-                  {startLoading ? 'Preparing Exam Session...' : 'Start Quiz & Begin Timer →'}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
+
+          {/* Card 1: Full Name of the Student */}
+          <div className="gf-card p-6 border border-[#dadce0] rounded-lg bg-white space-y-3">
+            <div>
+              <label className="text-sm font-medium text-gray-900 flex items-center gap-1">
+                Full Name of the Student <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs font-semibold text-gray-700 mt-0.5">
+                (Name &nbsp;&nbsp; Father's Name &nbsp;&nbsp; Surname)
+              </p>
+            </div>
+            <div className="pt-2">
+              <input
+                type="text"
+                required
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                placeholder="Short-answer text"
+                className="w-full text-sm text-gray-900 gf-input-underline pb-2 placeholder-gray-400 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Card 2: Standard/ Division */}
+          {divisionsList.length > 0 && (
+            <div className="gf-card p-6 border border-[#dadce0] rounded-lg bg-white space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-900 flex items-center gap-1">
+                  Standard/ Division <span className="text-red-500">*</span>
+                </label>
+                {/* 6 drag dots icon at top like Google Forms */}
+                <div className="text-gray-300">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="9" cy="7" r="1.5"/><circle cx="15" cy="7" r="1.5"/>
+                    <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                    <circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/>
+                  </svg>
+                </div>
+              </div>
+
+              <div className="space-y-1 pt-1">
+                {divisionsList.map((div, idx) => {
+                  const isSelected = studentDivision === div;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setStudentDivision(div)}
+                      className="flex items-center gap-3 p-2.5 rounded-md hover:bg-gray-50/80 cursor-pointer text-sm text-gray-800 select-none group transition-colors"
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                          isSelected ? 'border-[#673ab7]' : 'border-gray-400 group-hover:border-gray-600'
+                        }`}
+                      >
+                        {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#673ab7]" />}
+                      </div>
+                      <span className={isSelected ? 'font-medium text-[#673ab7]' : 'text-gray-800'}>
+                        {div}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Card 3: Roll Number (Optional) */}
+          <div className="gf-card p-6 border border-[#dadce0] rounded-lg bg-white space-y-3">
+            <div>
+              <label className="text-sm font-medium text-gray-900">
+                Roll Number / ID Number <span className="text-xs text-gray-400 font-normal">(Optional)</span>
+              </label>
+            </div>
+            <div className="pt-1">
+              <input
+                type="text"
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+                placeholder="Short-answer text"
+                className="w-full text-sm text-gray-900 gf-input-underline pb-2 placeholder-gray-400 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Action Row */}
+          <div className="flex items-center justify-between pt-2">
+            <button
+              type="submit"
+              disabled={startLoading || !studentName.trim() || (divisionsList.length > 0 && !studentDivision)}
+              className="gf-btn-primary px-8 py-2.5 text-sm cursor-pointer disabled:opacity-50 shadow-xs"
+            >
+              {startLoading ? 'Preparing Exam Session...' : 'Start Quiz →'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStudentName('');
+                setStudentDivision('');
+                setStudentEmail('');
+              }}
+              className="text-xs text-[#673ab7] hover:underline font-medium cursor-pointer"
+            >
+              Clear form
+            </button>
+          </div>
+        </form>
       </div>
     );
   }
