@@ -50,12 +50,14 @@ export async function getQuizzes(): Promise<Quiz[]> {
 }
 
 export async function getQuiz(id: string): Promise<Quiz | null> {
+  if (!id) return null;
+  const cleanId = id.trim();
   if (isMockMode) {
-    const local = mockDb.getQuiz(id);
+    const local = mockDb.getQuiz(cleanId);
     if (local) return local;
     if (typeof window !== 'undefined') {
       try {
-        const res = await fetch(`/api/quizzes/${id}`, { cache: 'no-store' });
+        const res = await fetch(`/api/quizzes/${cleanId}`, { cache: 'no-store' });
         if (res.ok) {
           const q: Quiz = await res.json();
           mockDb.setQuiz(q);
@@ -66,7 +68,7 @@ export async function getQuiz(id: string): Promise<Quiz | null> {
     return null;
   }
   const { doc, getDoc } = await firestoreModule();
-  const snap = await getDoc(doc(db!, 'quizzes', id));
+  const snap = await getDoc(doc(db!, 'quizzes', cleanId));
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() } as Quiz;
 }
@@ -157,17 +159,16 @@ export async function createAttempt(quizId: string, studentName: string, student
 
 export async function findActiveAttempt(quizId: string, studentEmail: string): Promise<QuizAttempt | null> {
   if (isMockMode) return mockDb.getAttemptByStudent(quizId, studentEmail) || null;
-  const { collection, query, where, getDocs, limit } = await firestoreModule();
+  const { collection, query, where, getDocs } = await firestoreModule();
   const snap = await getDocs(
     query(collection(db!, 'attempts'),
       where('quizId', '==', quizId),
-      where('studentEmail', '==', studentEmail),
-      where('submittedAt', '==', null),
-      limit(1))
+      where('studentEmail', '==', studentEmail))
   );
   if (snap.empty) return null;
-  const d = snap.docs[0];
-  return { id: d.id, ...d.data() } as QuizAttempt;
+  const activeDoc = snap.docs.find(d => !d.data().submittedAt);
+  if (!activeDoc) return null;
+  return { id: activeDoc.id, ...activeDoc.data() } as QuizAttempt;
 }
 
 export async function findSubmittedAttempt(quizId: string, studentEmail: string): Promise<QuizAttempt | null> {
@@ -175,18 +176,19 @@ export async function findSubmittedAttempt(quizId: string, studentEmail: string)
     const attempts = mockDb.getAttempts(quizId);
     return attempts.find(a => a.studentEmail === studentEmail && a.submittedAt) || null;
   }
-  const { collection, query, where, getDocs, limit, orderBy } = await firestoreModule();
+  const { collection, query, where, getDocs } = await firestoreModule();
   const snap = await getDocs(
     query(collection(db!, 'attempts'),
       where('quizId', '==', quizId),
-      where('studentEmail', '==', studentEmail),
-      where('submittedAt', '!=', null),
-      orderBy('submittedAt', 'desc'),
-      limit(1))
+      where('studentEmail', '==', studentEmail))
   );
   if (snap.empty) return null;
-  const d = snap.docs[0];
-  return { id: d.id, ...d.data() } as QuizAttempt;
+  const submittedDocs = snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as QuizAttempt))
+    .filter(a => !!a.submittedAt);
+  if (submittedDocs.length === 0) return null;
+  submittedDocs.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+  return submittedDocs[0];
 }
 
 export async function submitAttempt(
@@ -242,14 +244,16 @@ export async function submitAttempt(
 
 export async function getAttempts(quizId: string): Promise<QuizAttempt[]> {
   if (isMockMode) return mockDb.getAttempts(quizId);
-  const { collection, query, where, getDocs, orderBy } = await firestoreModule();
+  const { collection, query, where, getDocs } = await firestoreModule();
   const snap = await getDocs(
     query(collection(db!, 'attempts'),
-      where('quizId', '==', quizId),
-      where('submittedAt', '!=', null),
-      orderBy('submittedAt', 'desc'))
+      where('quizId', '==', quizId))
   );
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as QuizAttempt));
+  const list = snap.docs
+    .map(d => ({ id: d.id, ...d.data() } as QuizAttempt))
+    .filter(a => !!a.submittedAt);
+  list.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+  return list;
 }
 
 export function computeStats(attempts: QuizAttempt[]): ResponseStats {

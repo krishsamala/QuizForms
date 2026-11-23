@@ -58,7 +58,7 @@ export default function StudentQuizPage({ params }: PageProps) {
         setLoading(true);
         const q = await getQuiz(quizId);
         if (!q) {
-          setErrorMsg('Quiz not found. Please check the URL provided by your instructor.');
+          setErrorMsg('Quiz not found. Please verify the URL or ID provided by your instructor.');
           return;
         }
         setQuiz(q);
@@ -76,8 +76,14 @@ export default function StudentQuizPage({ params }: PageProps) {
           }
         }
       } catch (err: any) {
-        console.error(err);
-        setErrorMsg('Failed to load quiz details');
+        console.error('fetchQuiz error:', err);
+        const code = err?.code || '';
+        const msg = err?.message || '';
+        if (code === 'permission-denied' || msg.includes('permission') || msg.includes('Permission')) {
+          setErrorMsg('PERMISSION_DENIED');
+        } else {
+          setErrorMsg(msg || 'Failed to load quiz details');
+        }
       } finally {
         setLoading(false);
       }
@@ -131,8 +137,14 @@ export default function StudentQuizPage({ params }: PageProps) {
 
       setActiveAttempt(attempt);
     } catch (err: any) {
-      console.error(err);
-      setErrorMsg(err.message || 'Failed to start quiz');
+      console.error('handleStartQuiz error:', err);
+      const code = err?.code || '';
+      const msg = err?.message || 'Failed to start quiz';
+      if (code === 'permission-denied' || msg.includes('permission')) {
+        setErrorMsg('Firebase Permission Denied: Student attempts cannot be written. Please check Firestore Rules.');
+      } else {
+        setErrorMsg(msg);
+      }
     } finally {
       setStartLoading(false);
     }
@@ -235,13 +247,45 @@ export default function StudentQuizPage({ params }: PageProps) {
 
   // Error Screen
   if (errorMsg || !quiz) {
+    const isPermDenied = errorMsg === 'PERMISSION_DENIED' || errorMsg?.includes('permission-denied') || errorMsg?.includes('Permission');
     return (
       <div className="min-h-screen bg-[#f0ebf8] flex items-center justify-center p-4">
-        <div className="gf-card max-w-md w-full overflow-hidden">
+        <div className="gf-card max-w-lg w-full overflow-hidden shadow-md">
           <div className="gf-header-accent" />
-          <div className="p-8 text-center space-y-4">
-            <h1 className="text-xl font-semibold text-gray-900">Quiz Unavailable</h1>
-            <p className="text-sm text-gray-600">{errorMsg || 'This quiz could not be loaded.'}</p>
+          <div className="p-8 space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <svg className="w-8 h-8 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h1 className="text-xl font-semibold text-gray-900">Quiz Unavailable</h1>
+            </div>
+
+            {isPermDenied ? (
+              <div className="space-y-3">
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <strong>Firebase Permission Denied:</strong> Your Firestore database is blocking unauthenticated students from reading the quiz.
+                </p>
+                <div className="text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                  <p className="font-semibold text-gray-900">How to fix in Firebase Console (1 minute):</p>
+                  <ol className="list-decimal list-inside space-y-1.5 text-gray-600">
+                    <li>Open <strong>Firebase Console</strong> → your project → <strong>Firestore Database</strong>.</li>
+                    <li>Click the <strong>Rules</strong> tab at the top.</li>
+                    <li>Paste the updated rules to allow public read on quizzes and public read/write on attempts.</li>
+                    <li>Click <strong>Publish</strong>.</li>
+                  </ol>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                {errorMsg || 'This quiz could not be loaded. Please verify the URL or ID provided by your instructor.'}
+              </p>
+            )}
+
+            <div className="pt-2 text-center">
+              <Link href="/" className="gf-btn-outline inline-flex items-center gap-2">
+                Return to Home
+              </Link>
+            </div>
           </div>
         </div>
       </div>
