@@ -6,11 +6,14 @@ export default function HomePage() {
       <div className="gf-card max-w-lg w-full overflow-hidden">
         <div className="gf-header-accent" />
         <div className="p-8 text-center space-y-6">
-          {/* Google Forms Logo Icon */}
-          <div className="mx-auto w-16 h-16 rounded-full bg-[#ede7f6] flex items-center justify-center text-[#673ab7]">
-            <svg className="w-9 h-9" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-            </svg>
+          {/* QuizForms Logo */}
+          <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="QuizForms"
+              className="w-20 h-20 rounded-full object-contain shadow-sm"
+            />
           </div>
 
           <div>

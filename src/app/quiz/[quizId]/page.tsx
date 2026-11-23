@@ -709,7 +709,9 @@ export default function StudentQuizPage({ params }: PageProps) {
       {/* Google Forms Sticky Top Bar */}
       <header className="gf-timer-bar">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="QuizForms" className="w-8 h-8 rounded-full object-contain" />
             <span className="font-medium text-gray-900 text-sm hidden sm:inline truncate max-w-xs">
               {quiz.title}
             </span>

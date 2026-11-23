@@ -5,6 +5,11 @@ import { AuthProvider } from '@/lib/auth-context';
 export const metadata: Metadata = {
   title: 'QuizForms — Google Forms-Style Timed Quiz Platform',
   description: 'Create and host timed practice exams with AI PDF import and Google Forms aesthetics.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+    shortcut: '/logo.png',
+  },
 };
 
 export default function RootLayout({

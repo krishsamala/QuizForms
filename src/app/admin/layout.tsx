@@ -92,14 +92,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/admin" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-[#673ab7] group-hover:bg-[#ede7f6] transition-colors">
-                <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                </svg>
-              </div>
+              <img
+                src="/logo.png"
+                alt="QuizForms Logo"
+                className="w-9 h-9 rounded-full object-contain shadow-xs group-hover:scale-105 transition-transform"
+              />
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-lg text-gray-800 tracking-tight">QuizForms</span>
+                  <span className="font-semibold text-lg text-gray-900 tracking-tight">QuizForms</span>
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#ede7f6] text-[#673ab7]">
                     Admin
                   </span>
