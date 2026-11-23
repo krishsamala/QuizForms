@@ -10,12 +10,33 @@ interface AuthContextType {
   isAdmin: boolean;
   isMock: boolean;
   authError: string | null;
+  allowedAdmins: string[];
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
+// Pre-authorized admin emails (add specific addresses here or in NEXT_PUBLIC_ADMIN_EMAIL)
+export const HARDCODED_ADMINS: string[] = [
+  // Add your 2 admin Gmail accounts here if desired:
+  // 'teacher1@gmail.com',
+  // 'teacher2@gmail.com',
+];
+
+export function getAdminEmails(): string[] {
+  const envAdmins = (
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL ||
+    process.env.NEXT_PUBLIC_ADMIN_EMAILS ||
+    ''
+  )
+    .split(/[,;\s]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e && e !== 'admin@demo.com');
+
+  return Array.from(new Set([...HARDCODED_ADMINS.map((e) => e.trim().toLowerCase()), ...envAdmins]));
+}
+
 const AuthContext = createContext<AuthContextType>({
-  user: null, loading: true, isAdmin: false, isMock: true, authError: null,
+  user: null, loading: true, isAdmin: false, isMock: true, authError: null, allowedAdmins: [],
   signIn: async () => {}, signOut: async () => {},
 });
 
@@ -23,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || '';
+  const allowedAdmins = getAdminEmails();
 
   useEffect(() => {
     if (isMockMode) {
@@ -43,14 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, []);
 
+  const userEmail = user?.email?.toLowerCase().trim() || '';
+
+  // Only allow admin access if the user's email matches the configured admin whitelist
   const isAdmin = isMockMode
     ? true
-    : (!!user && (
-        !adminEmail ||
-        adminEmail === 'admin@demo.com' ||
-        user.email?.toLowerCase() === adminEmail.toLowerCase() ||
-        adminEmail.split(',').map((e) => e.trim().toLowerCase()).includes(user.email?.toLowerCase() || '')
-      ));
+    : (!!user && allowedAdmins.length > 0 && allowedAdmins.includes(userEmail));
 
   const signIn = async () => {
     if (isMockMode) {
@@ -92,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, isMock: isMockMode, authError, signIn, signOut: signOutFn }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, isMock: isMockMode, authError, allowedAdmins, signIn, signOut: signOutFn }}>
       {children}
     </AuthContext.Provider>
   );

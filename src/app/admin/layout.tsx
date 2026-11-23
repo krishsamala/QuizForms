@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, isAdmin, isMock, authError, signIn, signOut } = useAuth();
+  const { user, loading, isAdmin, isMock, authError, allowedAdmins, signIn, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -49,15 +49,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
 
             {user && (
-              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-                Signed in as <strong>{user.email}</strong>, but this email is not in the allowed admin list.
-                <button
-                  type="button"
-                  onClick={() => signOut()}
-                  className="block mt-2 text-xs text-[#673ab7] underline font-semibold mx-auto cursor-pointer"
-                >
-                  Sign out & switch account
-                </button>
+              <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs text-left space-y-2.5 leading-relaxed">
+                <p className="font-semibold text-amber-950 flex items-center gap-1.5">
+                  <span>⛔ Access Restricted</span>
+                </p>
+                <p>
+                  Signed in as <strong>{user.email}</strong>, but this account is not in the authorized administrator whitelist.
+                </p>
+                {allowedAdmins && allowedAdmins.length > 0 ? (
+                  <div className="bg-white/90 p-2.5 rounded border border-amber-200 font-mono text-[11px] text-gray-700">
+                    <span className="font-semibold text-gray-900 block mb-0.5">Authorized Admins:</span>
+                    {allowedAdmins.join(', ')}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-amber-800">
+                    No admin accounts configured yet. Add your 2 admin Gmail addresses in Vercel under <strong>NEXT_PUBLIC_ADMIN_EMAIL</strong> (comma-separated).
+                  </p>
+                )}
+                <div className="pt-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => signOut()}
+                    className="text-xs text-[#673ab7] underline font-semibold cursor-pointer"
+                  >
+                    Sign out & switch Google account
+                  </button>
+                </div>
               </div>
             )}
 
