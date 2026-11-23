@@ -276,9 +276,19 @@ export default function StudentQuizPage({ params }: PageProps) {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                {errorMsg || 'This quiz could not be loaded. Please verify the URL or ID provided by your instructor.'}
-              </p>
+              <div className="space-y-3">
+                <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  {errorMsg || 'This quiz could not be loaded. Please verify the URL or ID provided by your instructor.'}
+                </p>
+                <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1">
+                  <div className="font-mono text-gray-500 break-all">
+                    Attempted ID: <span className="text-[#673ab7] font-semibold">{quizId}</span>
+                  </div>
+                  <p className="text-gray-500 pt-1">
+                    Tip: If opening on a phone, make sure the link was not cut off or mistyped, or scan the QR code directly from the instructor dashboard.
+                  </p>
+                </div>
+              </div>
             )}
 
             <div className="pt-2 text-center">

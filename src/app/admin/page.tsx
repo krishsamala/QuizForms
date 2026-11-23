@@ -13,6 +13,7 @@ export default function AdminDashboardPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [qrModalQuizId, setQrModalQuizId] = useState<string | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
 
   const loadData = async () => {
@@ -312,6 +313,17 @@ export default function AdminDashboardPage() {
                       </svg>
                     </button>
 
+                    {/* QR Code */}
+                    <button
+                      onClick={() => setQrModalQuizId(quiz.id)}
+                      className="p-1.5 rounded-full text-gray-500 hover:text-[#673ab7] hover:bg-[#ede7f6] transition-colors"
+                      title="Show QR Code for Mobile"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                      </svg>
+                    </button>
+
                     {/* View Responses */}
                     <Link
                       href={`/admin/responses/${quiz.id}`}
@@ -369,6 +381,68 @@ export default function AdminDashboardPage() {
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium text-xs shadow-xs"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal for Mobile Access */}
+      {qrModalQuizId && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setQrModalQuizId(null)}
+        >
+          <div
+            className="bg-white rounded-xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-gray-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm">Scan Exam Link with Phone</h3>
+              <button
+                type="button"
+                onClick={() => setQrModalQuizId(null)}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Point your phone camera at this QR code to open the exam directly:
+            </p>
+
+            <div className="flex justify-center p-4 bg-gray-50 rounded-xl border border-gray-200/60 shadow-inner">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(
+                  typeof window !== 'undefined' ? `${window.location.origin}/quiz/${qrModalQuizId}` : `/quiz/${qrModalQuizId}`
+                )}`}
+                alt="Quiz QR Code"
+                className="w-48 h-48 rounded-lg shadow-xs"
+              />
+            </div>
+
+            <div className="bg-purple-50 text-[#673ab7] p-2.5 rounded-lg border border-purple-100 text-[11px] font-mono break-all select-all">
+              {typeof window !== 'undefined' ? `${window.location.origin}/quiz/${qrModalQuizId}` : `/quiz/${qrModalQuizId}`}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  handleCopyLink(qrModalQuizId);
+                  setQrModalQuizId(null);
+                }}
+                className="gf-btn-outline flex-1 text-xs py-2"
+              >
+                Copy Link
+              </button>
+              <button
+                type="button"
+                onClick={() => setQrModalQuizId(null)}
+                className="gf-btn-primary flex-1 text-xs py-2"
+              >
+                Done
               </button>
             </div>
           </div>

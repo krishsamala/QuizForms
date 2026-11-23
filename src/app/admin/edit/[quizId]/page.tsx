@@ -25,6 +25,7 @@ export default function QuizEditorPage({ params }: PageProps) {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isDiagramReviewOpen, setIsDiagramReviewOpen] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
 
   // PDF Import State
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -718,6 +719,17 @@ export default function QuizEditorPage({ params }: PageProps) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                   </svg>
                   Copy Link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(true)}
+                  className="gf-btn-outline text-[11px] py-1 px-2.5 flex items-center gap-1 cursor-pointer"
+                  title="Scan with phone"
+                >
+                  <svg className="w-3.5 h-3.5 text-[#673ab7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                  </svg>
+                  QR Code
                 </button>
                 <Link
                   href={`/quiz/${quiz.id}`}
@@ -1491,6 +1503,65 @@ export default function QuizEditorPage({ params }: PageProps) {
                 className="gf-btn-primary text-xs"
               >
                 Import Questions
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal for Mobile Testing */}
+      {showQrModal && quiz && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 backdrop-blur-xs"
+          onClick={() => setShowQrModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-gray-100 animate-in fade-in zoom-in duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm">Scan Exam Link with Phone</h3>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(false)}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Point your phone camera at this QR code to open the exam directly without typing mistakes:
+            </p>
+
+            <div className="flex justify-center p-4 bg-gray-50 rounded-xl border border-gray-200/60 shadow-inner">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(
+                  typeof window !== 'undefined' ? `${window.location.origin}/quiz/${quiz.id}` : `/quiz/${quiz.id}`
+                )}`}
+                alt="Quiz QR Code"
+                className="w-48 h-48 rounded-lg shadow-xs"
+              />
+            </div>
+
+            <div className="bg-purple-50 text-[#673ab7] p-2.5 rounded-lg border border-purple-100 text-[11px] font-mono break-all select-all">
+              {typeof window !== 'undefined' ? `${window.location.origin}/quiz/${quiz.id}` : `/quiz/${quiz.id}`}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="gf-btn-outline flex-1 text-xs py-2"
+              >
+                Copy Link
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(false)}
+                className="gf-btn-primary flex-1 text-xs py-2"
+              >
+                Done
               </button>
             </div>
           </div>

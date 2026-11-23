@@ -1,6 +1,6 @@
 import { Quiz, QuizAttempt, QuizQuestion, ResponseStats } from './types';
 import { isMockMode, db, storage } from './firebase';
-import { mockDb } from './mock-data';
+import { mockDb, sampleQuiz, sampleQuiz2 } from './mock-data';
 import { v4 as uuidv4 } from 'uuid';
 
 // ── Firestore helpers (only used when NOT in mock mode) ──
@@ -51,7 +51,13 @@ export async function getQuizzes(): Promise<Quiz[]> {
 
 export async function getQuiz(id: string): Promise<Quiz | null> {
   if (!id) return null;
-  const cleanId = id.trim();
+  const cleanId = decodeURIComponent(id).trim().replace(/[\/\.\,\s]+$/, '');
+  if (!cleanId) return null;
+
+  // Always allow fallback to sample quizzes even in Firestore mode
+  if (cleanId === sampleQuiz.id) return sampleQuiz;
+  if (cleanId === sampleQuiz2.id) return sampleQuiz2;
+
   if (isMockMode) {
     const local = mockDb.getQuiz(cleanId);
     if (local) return local;
@@ -69,7 +75,11 @@ export async function getQuiz(id: string): Promise<Quiz | null> {
   }
   const { doc, getDoc } = await firestoreModule();
   const snap = await getDoc(doc(db!, 'quizzes', cleanId));
-  if (!snap.exists()) return null;
+  if (!snap.exists()) {
+    if (cleanId === sampleQuiz.id) return sampleQuiz;
+    if (cleanId === sampleQuiz2.id) return sampleQuiz2;
+    return null;
+  }
   return { id: snap.id, ...snap.data() } as Quiz;
 }
 
